@@ -234,7 +234,7 @@ Skip these entirely. Revisit if the app gets traction.
 
 Build in this sequence — each step is independently usable:
 
-1. **Supabase setup** — schema, storage bucket, auth (magic link).
+1. **Supabase setup** — schema, storage bucket
 2. **Sighting form** — saves to DB, no AI yet.
 3. **Cat directory page** — shows all cats (all separate until merging is added).
 4. **AI pipeline** — add CLIP embeddings + merging logic.

@@ -1,0 +1,5 @@
+key.txt
+.env
+.env.*
+backend/.env
+backend/.env.*
