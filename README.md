@@ -1,12 +1,8 @@
-# Cat_Directory
-meow meow 
-
 # Cat Directory — MVP Product Requirements Document
 
 **Version:** 1.0 — MVP Scope
 **Status:** Draft
 **Date:** May 2026
-**Solo developer build — keep it simple**
 
 ---
 
@@ -70,10 +66,10 @@ A simple form with exactly these fields:
 | Coat colour | Dropdown — Black / White / Orange / Grey / Tabby / Tortoiseshell / Calico / Bi-colour / Other |
 | Health status | Dropdown — Healthy / Minor injury / Looks unwell / Unknown |
 | Temperament | Dropdown — Friendly / Shy / Feral / Unknown |
-| Location | Text field — street intersection or landmark (e.g. "Near the park on Elm St") |
+| Neighbourhood | Dropdown — predefined list of neighbourhoods in your city (e.g. "Riverdale", "Mill Woods") |
 
 On submit:
-- Save the sighting to the DB.
+- Save the sighting to the DB with the selected neighbourhood stored directly — no geocoding needed.
 - Show confirmation: "Thanks! We'll process this shortly."
 - Trigger the AI pipeline in the background (see AI section).
 
@@ -87,7 +83,7 @@ On submit:
 A grid of cat cards. Each card shows:
 - Photo
 - Coat colour
-- Neighbourhood (derived from the location text — just store the neighbourhood name, not the exact address)
+- Neighbourhood (the dropdown value the submitter selected)
 - Status — Pet · Community Cat · Unknown
 - Last seen date
 
@@ -98,6 +94,8 @@ Clicking a card opens a simple **Cat Detail Page** showing:
 - A "This is my cat" button (sends a simple claim — see below)
 
 **MVP filtering:** Just a neighbourhood dropdown filter. No fancy search yet.
+
+> **Note on the neighbourhood list:** Hardcode the list of neighbourhoods as a constant in the codebase to start. When you need to add or remove one, just update the file and redeploy. No DB table needed until the list grows unwieldy.
 
 ---
 
@@ -122,7 +120,7 @@ Form fields:
 - Up to 3 photos
 - Coat colour (same dropdown)
 - Short description of distinguishing features (free text, 200 chars)
-- Neighbourhood last seen
+- Neighbourhood last seen (same dropdown as the sighting form)
 - Your contact email (shown publicly on the listing)
 
 Saved immediately and published to the lost cat board.
@@ -196,7 +194,7 @@ users
 
 sightings
   id, user_id, cat_id (nullable), photo_url, embedding (vector 512),
-  coat_colour, health_status, temperament, location_text, neighbourhood,
+  coat_colour, health_status, temperament, neighbourhood,
   sighted_at, created_at
 
 cats
