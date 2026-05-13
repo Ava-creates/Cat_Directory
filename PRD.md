@@ -29,20 +29,23 @@ A community web app where people submit cat sightings. An AI pipeline groups sig
 | Layer | Tool | Why |
 |---|---|---|
 | Frontend | Next.js on Vercel | Free hosting, easy deployment |
-| Database + Auth | Supabase | Free Postgres + magic-link auth + storage + pgvector |
+| Backend | FastAPI on Railway or Render | Free tier, Python, async support for AI pipeline |
+| Database | Supabase (Postgres + pgvector) | Free, pgvector built in for embeddings |
 | File storage | Supabase Storage | 1 GB free, enough for early photos |
 | AI embeddings | Hugging Face Inference API | Free CLIP embeddings for image matching |
 | Email | Resend | 3,000 free emails/month |
 
+No auth library needed. No sessions. No JWTs.
+
 ---
 
-## User Roles (MVP — Keep It Simple)
+## User Roles (MVP — No Auth)
 
 | Role | How they access it |
 |---|---|
-| **Visitor** | No login needed — can browse directory and lost cats |
-| **Community User** | Magic-link email login — can submit sightings and lost cat reports |
-| **Moderator (you)** | Same login, manually assigned an `is_moderator` flag in the DB — approves claims and manages content directly in Supabase or a simple hidden `/admin` page |
+| **Visitor** | No login — can browse directory, lost cats, and resources |
+| **Submitter** | No login — can submit sightings anonymously, lost cat reports and pet claims require an email address |
+| **Moderator (you)** | Simple password-protected `/admin` route — approve claims and manage content directly in Supabase |
 
 ---
 
@@ -56,7 +59,7 @@ A community web app where people submit cat sightings. An AI pipeline groups sig
 ---
 
 ### 2. Submit a Sighting
-**Requires login.**
+**No login required — fully anonymous.**
 
 A simple form with exactly these fields:
 
@@ -100,11 +103,11 @@ Clicking a card opens a simple **Cat Detail Page** showing:
 ---
 
 ### 4. Pet Claim
-**Requires login.**
+**No login required — email address collected instead.**
 
 User clicks "This is my cat" on a cat detail page. A simple form:
 - Their name
-- Contact email
+- Their email address (used to notify them of the moderator's decision)
 - Short message: "Why do you think this is your cat?"
 
 This saves a row to a `pet_claims` table with status `pending`. You review it in Supabase and manually flip the cat's status to `pet` if you approve. No built-out moderator UI needed for MVP.
@@ -114,7 +117,7 @@ This saves a row to a `pet_claims` table with status `pending`. You review it in
 ### 5. Lost Cat Page
 **Two sub-sections:**
 
-#### Report a Lost Cat (requires login)
+#### Report a Lost Cat (no login — email required)
 Form fields:
 - Cat's name
 - Up to 3 photos
@@ -186,15 +189,13 @@ If the Hugging Face API is down: save the sighting, mark embedding as `pending`,
 
 ## Data Model
 
-Five tables. Nothing more.
+Four tables. No users table.
 
 ```
-users
-  id, email, display_name, is_moderator, created_at
-
 sightings
-  id, user_id, cat_id (nullable), photo_url, embedding (vector 512),
+  id, photo_url, embedding (vector 512),
   coat_colour, health_status, temperament, neighbourhood,
+  cat_id (nullable — set after AI merging),
   sighted_at, created_at
 
 cats
@@ -203,12 +204,13 @@ cats
   last_seen_at, sighting_count, embedding (vector 512), created_at
 
 lost_cats
-  id, user_id, cat_name, coat_colour, description, neighbourhood,
+  id, cat_name, coat_colour, description, neighbourhood,
   last_seen_at, contact_email, status (active / found / archived),
   created_at, expires_at
 
 pet_claims
-  id, cat_id, user_id, message, status (pending / approved / denied), created_at
+  id, cat_id, submitter_name, contact_email, message,
+  status (pending / approved / denied), created_at
 ```
 
 ---
@@ -217,10 +219,10 @@ pet_claims
 
 Skip these entirely. Revisit if the app gets traction.
 
+- User accounts or auth of any kind.
 - Moderator dashboard UI — use Supabase directly for now.
 - In-app notifications — email only.
 - Map with exact location pins.
-- User profile pages.
 - Sighting rate limiting.
 - Comment / tip submission on lost cat listings.
 - Events calendar — just a static placeholder on the resources page.
