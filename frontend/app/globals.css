@@ -109,6 +109,15 @@ a {
 }
 
 /* ─── Nav ─────────────────────────────────────────────────────────────── */
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .nav a {
   font-family: var(--font-body);
   font-size: 1rem;
@@ -125,6 +134,13 @@ a {
   min-height: 44px;
   display: flex;
   align-items: center;
+  white-space: nowrap;
+}
+
+@media (min-width: 641px) {
+  .nav {
+    gap: 12px;
+  }
 }
 
 .nav a:hover {
@@ -491,7 +507,7 @@ button.button:disabled {
 
   .nav {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     justify-content: center;
     gap: 8px;
   }
