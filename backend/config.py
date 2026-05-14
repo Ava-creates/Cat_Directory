@@ -10,6 +10,11 @@ SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 # API Configuration
 API_SECRET = os.getenv("API_SECRET", "development-secret")
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+CORS_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("CORS_ORIGINS", "").split(",")
+    if origin.strip()
+]
 
 # External APIs
 HUGGING_FACE_API_KEY = os.getenv("HUGGING_FACE_API_KEY")

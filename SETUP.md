@@ -59,3 +59,26 @@ Copy `.env.example` to `.env.local` (frontend) and `.env` (backend), then fill i
 - Supabase (database, storage, magic link auth)
 - Hugging Face Inference API (CLIP embeddings)
 - Resend (email service)
+
+## CI/CD Deployment
+
+The repository now includes a GitHub Actions workflow that:
+- runs frontend and backend checks on every pull request
+- deploys the frontend to Vercel on pushes to `main`
+- triggers the backend deploy hook on Render on pushes to `main`
+
+### Required GitHub Secrets
+- `VERCEL_TOKEN`
+- `VERCEL_ORG_ID`
+- `VERCEL_PROJECT_ID`
+- `RENDER_DEPLOY_HOOK_URL`
+
+### Required App Environment Variables
+- Frontend: `NEXT_PUBLIC_API_URL`
+- Backend: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ENVIRONMENT`
+- Backend CORS: `CORS_ORIGINS` set to your deployed frontend URL(s), separated by commas
+
+### Flow
+1. Open a pull request to run CI checks.
+2. Merge to `main` to deploy both apps.
+3. Keep adding functions as normal; each merge will rebuild and redeploy the latest code.

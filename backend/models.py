@@ -5,11 +5,13 @@ from datetime import datetime
 # ===== Sighting Models =====
 class SightingCreate(BaseModel):
     photo_url: str
+    sighting_type: str
     coat_colour: str
     health_status: str
     temperament: str
     neighbourhood: str
     sighted_at: datetime
+    lost_cat_id: Optional[str] = None
 
 class Sighting(SightingCreate):
     id: str

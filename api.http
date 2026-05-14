@@ -1,0 +1,13 @@
+### Health check
+GET http://localhost:8000/health
+
+### Create sighting
+POST http://localhost:8000/api/sightings
+Content-Type: multipart/form-data
+
+photo=../hehe.png
+coat_colour=Black
+health_status=Healthy
+temperament=Friendly
+neighbourhood=Riverdale
+sighted_at=2026-05-13T10:30:00Z

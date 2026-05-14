@@ -43,19 +43,33 @@ CREATE INDEX cats_status_idx ON cats(status);
 CREATE TABLE sightings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   photo_url TEXT NOT NULL,
+  sighting_type TEXT NOT NULL DEFAULT 'normal' CHECK (sighting_type IN ('normal', 'lost_cat')),
   embedding vector(512),
   coat_colour TEXT NOT NULL,
   health_status TEXT NOT NULL,
   temperament TEXT NOT NULL,
   neighbourhood TEXT NOT NULL,
   cat_id UUID REFERENCES cats(id),
+  lost_cat_id UUID REFERENCES lost_cats(id),
   sighted_at TIMESTAMP NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX sightings_cat_id_idx ON sightings(cat_id);
+CREATE INDEX sightings_lost_cat_id_idx ON sightings(lost_cat_id);
+CREATE INDEX sightings_type_idx ON sightings(sighting_type);
 CREATE INDEX sightings_neighbourhood_idx ON sightings(neighbourhood);
 CREATE INDEX sightings_created_at_idx ON sightings(created_at);
+```
+
+If you already created the sightings table, run this update:
+```sql
+ALTER TABLE sightings
+  ADD COLUMN IF NOT EXISTS sighting_type TEXT NOT NULL DEFAULT 'normal' CHECK (sighting_type IN ('normal', 'lost_cat')),
+  ADD COLUMN IF NOT EXISTS lost_cat_id UUID REFERENCES lost_cats(id);
+
+CREATE INDEX IF NOT EXISTS sightings_lost_cat_id_idx ON sightings(lost_cat_id);
+CREATE INDEX IF NOT EXISTS sightings_type_idx ON sightings(sighting_type);
 ```
 
 ### Lost Cats Table
