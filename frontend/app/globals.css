@@ -500,10 +500,8 @@ button.button:disabled {
   }
 
   .header .container {
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 10px 12px;
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 12px;
     text-align: center;
     padding: 12px 0;
   }
@@ -514,7 +512,7 @@ button.button:disabled {
 
   .nav {
     display: flex;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     justify-content: center;
     gap: 8px;
   }
