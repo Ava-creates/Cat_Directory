@@ -336,6 +336,7 @@ a {
 .form {
   display: grid;
   gap: 22px;
+  min-width: 0;
 }
 
 .field {
@@ -345,10 +346,12 @@ a {
   font-weight: 700;
   font-size: 1.15rem;
   color: var(--dark);
+  min-width: 0;
 }
 
 .field input,
-.field select {
+.field select,
+.field textarea {
   font-family: var(--font-body);
   font-size: 1.15rem;
   font-weight: 400;
@@ -362,6 +365,13 @@ a {
   filter: url('#crayon-light');
   transition: box-shadow 0.15s, border-color 0.15s;
   min-height: 48px;
+  width: 100%;
+  max-width: 100%;
+}
+
+.field input[type="file"] {
+  padding: 8px 12px;
+  cursor: pointer;
 }
 
 .field input:focus,
