@@ -66,6 +66,7 @@ export default function RootLayout({
             <div className="container">
               <a className="brand" href="/">🐾 Cat Directory</a>
               <nav className="nav">
+                <a href="/">🏡 Home</a>
                 <a href="/sightings">Report a Sighting</a>
                 <a href="/lost-cats">Lost Cats</a>
                 <a href="/resources">Resources</a>

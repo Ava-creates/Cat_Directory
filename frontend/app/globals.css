@@ -477,9 +477,10 @@ button.button:disabled {
   }
 
   .header .container {
-    flex-direction: column;
-    gap: 12px;
-    text-align: center;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 10px 12px;
+    text-align: left;
     padding: 12px 0;
   }
 
@@ -490,7 +491,7 @@ button.button:disabled {
   .nav {
     display: flex;
     flex-wrap: wrap;
-    justify-content: center;
+    justify-content: flex-end;
     gap: 8px;
   }
 
