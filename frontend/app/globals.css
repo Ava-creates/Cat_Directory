@@ -95,7 +95,9 @@ a {
 .header .container {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: nowrap;
   padding: 18px 0;
 }
 
