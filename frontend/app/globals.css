@@ -95,7 +95,7 @@ a {
 .header .container {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   gap: 16px;
   flex-wrap: nowrap;
   padding: 18px 0;
@@ -116,8 +116,7 @@ a {
   align-items: center;
   gap: 12px;
   flex-wrap: nowrap;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+  overflow: visible;
 }
 
 .nav a {
@@ -490,6 +489,12 @@ button.button:disabled {
   }
 
   .grid {
+
+  .header .container {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
     grid-template-columns: repeat(1, minmax(0, 1fr));
     gap: 16px;
   }
@@ -498,7 +503,7 @@ button.button:disabled {
     flex-direction: row;
     flex-wrap: wrap;
     gap: 10px 12px;
-    justify-content: center;
+    flex-wrap: wrap;
     text-align: center;
     padding: 12px 0;
   }
