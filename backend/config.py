@@ -26,7 +26,8 @@ USE_LOCAL_EMBEDDINGS = os.getenv("USE_LOCAL_EMBEDDINGS", "true").lower() in ("1"
 LOCAL_EMBEDDING_MODEL = os.getenv("LOCAL_EMBEDDING_MODEL", "wkcn/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M")
 
 # Hugging Face Models
-HF_CAT_CLASSIFIER_MODEL = os.getenv("HF_CAT_CLASSIFIER_MODEL", "google/vit-base-patch16-224")
+# Used for zero-shot cat verification (see ai.verify_cat_image).
+HF_CAT_CLASSIFIER_MODEL = os.getenv("HF_CAT_CLASSIFIER_MODEL", "openai/clip-vit-base-patch32")
 HF_IMAGE_EMBEDDING_MODEL = os.getenv("HF_IMAGE_EMBEDDING_MODEL", "openai/clip-vit-base-patch32")
 HF_MIN_CAT_SCORE = float(os.getenv("HF_MIN_CAT_SCORE", "0.60"))
 

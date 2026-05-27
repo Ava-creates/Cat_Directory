@@ -128,7 +128,18 @@ def verify_cat_image(file_bytes: bytes) -> Tuple[bool, float, str]:
     try:
         client = _get_client()
         temp_path = _with_temp_image_path(file_bytes)
-        data = client.image_classification(temp_path, model=HF_CAT_CLASSIFIER_MODEL)
+        # Use zero-shot classification so we can directly ask "cat" vs "not a cat".
+        # This is more reliable than generic ImageNet labels (which can misclassify).
+        data = client.zero_shot_image_classification(
+            temp_path,
+            candidate_labels=[
+                "a photo of a cat",
+                "a photo of a human face",
+                "a photo of a dog",
+                "a photo of an object",
+            ],
+            model=HF_CAT_CLASSIFIER_MODEL,
+        )
     except Exception as exc:
         raise HFServiceError(f"Hugging Face request failed: {exc}")
     finally:
