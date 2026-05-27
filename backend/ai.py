@@ -46,6 +46,8 @@ def _load_local_clip():
 
 def _get_client() -> InferenceClient:
     api_key = HF_TOKEN or HUGGING_FACE_API_KEY
+    # Use the modern Inference Providers routing (router.huggingface.co under the hood)
+    # instead of the legacy api-inference.huggingface.co host (decommissioned).
     return InferenceClient(provider="hf-inference", api_key=api_key)
 
 
@@ -61,7 +63,9 @@ def _hf_headers() -> dict:
 
 
 def _post_image_embedding(model: str, file_bytes: bytes) -> object:
-    url = f"https://api-inference.huggingface.co/pipeline/feature-extraction/{model}"
+    # Legacy host api-inference.huggingface.co has been decommissioned.
+    # Use the router-backed hf-inference provider endpoint instead.
+    url = f"https://router.huggingface.co/hf-inference/models/{model}"
     image_data = base64.b64encode(file_bytes).decode("utf-8")
     try:
         with httpx.Client(timeout=30.0) as client:
