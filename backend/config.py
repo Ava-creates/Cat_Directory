@@ -22,7 +22,8 @@ HUGGING_FACE_API_KEY = os.getenv("HUGGING_FACE_API_KEY")
 RESEND_API_KEY = os.getenv("RESEND_API_KEY")
 
 # Local Embeddings
-USE_LOCAL_EMBEDDINGS = os.getenv("USE_LOCAL_EMBEDDINGS", "true").lower() in ("1", "true", "yes")
+# Default to remote embeddings (Render free tier is too constrained for Torch/Transformers).
+USE_LOCAL_EMBEDDINGS = os.getenv("USE_LOCAL_EMBEDDINGS", "false").lower() in ("1", "true", "yes")
 LOCAL_EMBEDDING_MODEL = os.getenv("LOCAL_EMBEDDING_MODEL", "wkcn/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M")
 
 # Hugging Face Models
