@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, File, UploadFile, Form
+from fastapi import FastAPI, HTTPException, File, UploadFile, Form, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import uvicorn
@@ -7,7 +7,7 @@ from typing import Optional
 import uuid
 from pathlib import Path
 
-from supabase import create_client, Client
+ 
 
 from config import (
     ENVIRONMENT,
@@ -17,8 +17,23 @@ from config import (
     SUPABASE_SERVICE_ROLE_KEY,
     MAX_FILE_SIZE,
     ALLOWED_EXTENSIONS,
+    API_SECRET,
+    SIGHTING_MERGE_THRESHOLD,
+    SIGHTING_MATCH_CANDIDATE_LIMIT,
 )
-from models import SightingCreate, Sighting, Cat, CatDetail, LostCatCreate, LostCat, PetClaimCreate, PetClaim
+from ai import verify_cat_image, get_image_embedding, HFServiceError
+from models import (
+    SightingCreate,
+    Sighting,
+    Cat,
+    CatDetail,
+    LostCatCreate,
+    LostCat,
+    PetClaimCreate,
+    PetClaim,
+    MatchApprove,
+    MatchReject,
+)
 
 app = FastAPI(
     title="Cat Directory API",
@@ -44,19 +59,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ===== Supabase Client =====
-supabase: Optional[Client] = None
-
-
-def get_supabase_client() -> Client:
-    global supabase
-    if supabase is None:
-        if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
-            raise HTTPException(status_code=500, detail="Supabase is not configured")
-        supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-    return supabase
-
-client = get_supabase_client()
+# Service layer imports (Supabase client + helpers)
+from services import (
+    client,
+    require_api_secret,
+    fetch_candidate_matches,
+    store_match_candidates,
+    create_cat_from_sighting,
+    fetch_sighting_for_creation,
+)
 
 # ===== Health Check =====
 @app.get("/health")
@@ -82,6 +93,9 @@ def create_sighting(
     """
 
     photo_url: Optional[str] = None
+    embedding: Optional[list[float]] = None
+    verification_label: Optional[str] = None
+    verification_score: Optional[float] = None
     if photo:
         file_ext = Path(photo.filename or "").suffix.lower().lstrip(".")
         if file_ext not in ALLOWED_EXTENSIONS:
@@ -90,6 +104,24 @@ def create_sighting(
         file_bytes = photo.file.read()
         if len(file_bytes) > MAX_FILE_SIZE:
             raise HTTPException(status_code=400, detail="File too large")
+
+        try:
+            is_cat, score, label = verify_cat_image(file_bytes)
+            verification_label = label
+            verification_score = score
+        except HFServiceError as exc:
+            raise HTTPException(status_code=502, detail=f"Cat verification failed: {exc}")
+
+        if not is_cat:
+            raise HTTPException(
+                status_code=400,
+                detail="Please upload a clear photo of a cat.",
+            )
+
+        try:
+            embedding = get_image_embedding(file_bytes)
+        except HFServiceError as exc:
+            raise HTTPException(status_code=502, detail=f"Embedding failed: {exc}")
 
         object_name = f"{uuid.uuid4()}.{file_ext}"
         try:
@@ -130,6 +162,10 @@ def create_sighting(
         sighted_at=sighted_at,
         lost_cat_id=lost_cat_id,
     ).model_dump(mode="json")
+    payload["embedding"] = embedding
+    payload["verification_label"] = verification_label
+    payload["verification_score"] = verification_score
+    payload["match_status"] = "pending"
     try:
         response = client.table("sightings").insert(payload).execute()
     except Exception as exc:
@@ -140,7 +176,28 @@ def create_sighting(
 
     sighting_id = response.data[0].get("id")
 
-    # TODO: Trigger AI merging pipeline
+    candidates: list[dict] = []
+    if embedding:
+        candidates = fetch_candidate_matches(embedding, coat_colour)
+        store_match_candidates(sighting_id, candidates)
+
+    if not candidates and embedding:
+        cat_id = create_cat_from_sighting(
+            photo_url,
+            embedding,
+            coat_colour,
+            health_status,
+            temperament,
+            neighbourhood,
+            sighted_at,
+        )
+        client.table("sightings").update(
+            {
+                "cat_id": cat_id,
+                "match_status": "auto_created",
+            }
+        ).eq("id", sighting_id).execute()
+
     return {
         "success": True,
         "message": "Thanks! We'll process this shortly.",
@@ -330,6 +387,126 @@ def create_pet_claim(claim: PetClaimCreate):
             "claim_id": "temp-id",
         }
     }
+
+# ===== Moderation Endpoints =====
+@app.post("/api/moderation/sighting-matches/{sighting_id}/approve")
+def approve_sighting_match(
+    sighting_id: str,
+    payload: MatchApprove,
+    x_api_secret: Optional[str] = Header(default=None, alias="X-API-SECRET"),
+):
+    require_api_secret(x_api_secret)
+
+    client.table("sightings").update(
+        {
+            "cat_id": payload.cat_id,
+            "match_status": "approved",
+        }
+    ).eq("id", sighting_id).execute()
+
+    client.table("sighting_match_candidates").update(
+        {
+            "status": "approved",
+            "reviewer_note": payload.reviewer_note,
+        }
+    ).eq("sighting_id", sighting_id).eq("cat_id", payload.cat_id).execute()
+
+    client.table("sighting_match_candidates").update(
+        {"status": "rejected"}
+    ).eq("sighting_id", sighting_id).neq("cat_id", payload.cat_id).execute()
+
+    if payload.mark_golden:
+        client.table("sighting_match_golden").insert(
+            {
+                "sighting_id": sighting_id,
+                "cat_id": payload.cat_id,
+                "label": "correct",
+                "reviewer_note": payload.reviewer_note,
+            }
+        ).execute()
+
+    return {"success": True}
+
+
+@app.post("/api/moderation/sighting-matches/{sighting_id}/reject")
+def reject_sighting_match(
+    sighting_id: str,
+    payload: MatchReject,
+    x_api_secret: Optional[str] = Header(default=None, alias="X-API-SECRET"),
+):
+    require_api_secret(x_api_secret)
+
+    client.table("sighting_match_candidates").update(
+        {
+            "status": "rejected",
+            "reviewer_note": payload.reviewer_note,
+        }
+    ).eq("sighting_id", sighting_id).eq("cat_id", payload.cat_id).execute()
+
+    if payload.mark_golden:
+        client.table("sighting_match_golden").insert(
+            {
+                "sighting_id": sighting_id,
+                "cat_id": payload.cat_id,
+                "label": "incorrect",
+                "reviewer_note": payload.reviewer_note,
+            }
+        ).execute()
+
+    return {"success": True}
+
+
+@app.get("/api/moderation/sighting-matches/pending")
+def list_pending_sighting_matches(
+    x_api_secret: Optional[str] = Header(default=None, alias="X-API-SECRET"),
+):
+    require_api_secret(x_api_secret)
+
+    response = (
+        client.table("sighting_match_candidates")
+        .select(
+            "id, similarity, sighting_id, cat_id, created_at, "
+            "sighting:sightings(id, photo_url, coat_colour, neighbourhood, sighted_at), "
+            "cat:cats(id, primary_photo_url, coat_colour, neighbourhood, last_seen_at)"
+        )
+        .eq("status", "pending")
+        .order("created_at", desc=True)
+        .execute()
+    )
+
+    return {"matches": response.data or []}
+
+
+@app.post("/api/moderation/sightings/{sighting_id}/create-cat")
+def create_cat_from_sighting_moderation(
+    sighting_id: str,
+    x_api_secret: Optional[str] = Header(default=None, alias="X-API-SECRET"),
+):
+    require_api_secret(x_api_secret)
+
+    sighting = fetch_sighting_for_creation(sighting_id)
+    cat_id = create_cat_from_sighting(
+        sighting["photo_url"],
+        sighting["embedding"],
+        sighting["coat_colour"],
+        sighting["health_status"],
+        sighting["temperament"],
+        sighting["neighbourhood"],
+        sighting["sighted_at"],
+    )
+
+    client.table("sightings").update(
+        {
+            "cat_id": cat_id,
+            "match_status": "auto_created",
+        }
+    ).eq("id", sighting_id).execute()
+
+    client.table("sighting_match_candidates").update(
+        {"status": "rejected"}
+    ).eq("sighting_id", sighting_id).execute()
+
+    return {"success": True, "cat_id": cat_id}
 
 # ===== Error Handlers =====
 @app.exception_handler(HTTPException)

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import NeighbourhoodCombobox from '@/app/components/NeighbourhoodCombobox'
 import {
   API_BASE_URL,
   COAT_COLOURS,
@@ -221,19 +222,14 @@ export default function LostCatsPage() {
             />
           </label>
 
-          <label className="field">
+          <div className="field">
             <span>Neighbourhood last seen</span>
-            <select
+            <NeighbourhoodCombobox
               value={neighbourhood}
-              onChange={(event) => setNeighbourhood(event.target.value)}
-            >
-              {NEIGHBOURHOODS.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-          </label>
+              onChange={setNeighbourhood}
+              placeholder="Search neighbourhoods"
+            />
+          </div>
 
           <label className="field">
             <span>Last seen date</span>
@@ -282,12 +278,23 @@ export default function LostCatsPage() {
                     />
                   ) : null}
                   <h3>{cat.cat_name}</h3>
-                  <p>{cat.coat_colour} · {cat.neighbourhood}</p>
-                  <p>Last seen: {new Date(cat.last_seen_at).toLocaleDateString()}</p>
-                  <p className="muted">{cat.description}</p>
+                  <p>
+                    <strong className="detail-label">Coat colour:</strong> {cat.coat_colour}
+                    {' · '}
+                    <strong className="detail-label">Neighbourhood:</strong> {cat.neighbourhood}
+                  </p>
+                  <p>
+                    <strong className="detail-label">Last seen:</strong>{' '}
+                    {new Date(cat.last_seen_at).toLocaleDateString()}
+                  </p>
+                  <p className="muted">
+                    <strong className="detail-label">Description:</strong> {cat.description}
+                  </p>
                 </div>
                 <div className="lost-meta">
-                  <span className="badge">{cat.status}</span>
+                  <span className="badge">
+                    <strong className="detail-label">Report status:</strong> {cat.status}
+                  </span>
                   <button
                     className="button"
                     type="button"
@@ -344,20 +351,14 @@ export default function LostCatsPage() {
                       </select>
                     </label>
 
-                    <label className="field">
+                    <div className="field">
                       <span>Neighbourhood seen</span>
-                      <select
+                      <NeighbourhoodCombobox
                         value={lostSightingNeighbourhood}
-                        onChange={(event) => setLostSightingNeighbourhood(event.target.value)}
-                      >
-                        {NEIGHBOURHOODS.map((value) => (
-                          <option key={value} value={value}>
-                            {value}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-
+                        onChange={setLostSightingNeighbourhood}
+                        placeholder="Search neighbourhoods"
+                      />
+                    </div>
                     <button
                       className="button"
                       type="submit"

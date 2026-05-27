@@ -21,6 +21,7 @@ A community web app where people submit cat sightings. An AI pipeline groups sig
 - No admin panel — moderation done directly in the Supabase dashboard for now.
 - AI runs asynchronously — if it's slow or fails, the sighting still saves.
 - Ship fast, cut scope ruthlessly.
+- All cat-to-sighting matches require moderator approval until thresholds are tuned.
 
 ---
 
@@ -32,7 +33,8 @@ A community web app where people submit cat sightings. An AI pipeline groups sig
 | Backend | FastAPI on Railway or Render | Free tier, Python, async support for AI pipeline |
 | Database | Supabase (Postgres + pgvector) | Free, pgvector built in for embeddings |
 | File storage | Supabase Storage | 1 GB free, enough for early photos |
-| AI embeddings | Hugging Face Inference API | Free CLIP embeddings for image matching |
+| AI embeddings | Hugging Face Inference API | Free image embeddings for image matching |
+| AI verification | Hugging Face Inference API | Free cat-vs-not-cat classification |
 | Email | Resend | 3,000 free emails/month |
 
 No auth library needed. No sessions. No JWTs.
@@ -75,6 +77,7 @@ On submit:
 - Save the sighting to the DB with the selected neighbourhood stored directly — no geocoding needed.
 - Show confirmation: "Thanks! We'll process this shortly."
 - Trigger the AI pipeline in the background (see AI section).
+- If the photo is not a cat, return: "Please upload a clear photo of a cat."
 
 **MVP limits:** No rate limiting for now. Add it later if spam is a problem.
 
@@ -159,19 +162,21 @@ A short article covering:
 
 ## AI Pipeline (MVP — Keep It Simple)
 
-The AI does two things: **merge sightings into cats** and **match lost cats to sightings**.
+The AI does two things: **verify cat photos**, **prepare candidate matches**, and **match lost cats to sightings**.
 
 ### How Merging Works
 
 When a sighting is submitted:
 
-1. Call the Hugging Face CLIP API to get a 512-dim embedding for the photo.
-2. Compare against embeddings of all existing cats using cosine similarity (via Supabase `pgvector`).
-3. Also check: does the coat colour match?
-4. If best match score is above **0.75** AND coat colours match → merge sighting into that cat (update last seen, add photo to gallery).
-5. If no good match → create a new cat record.
+1. Call the Hugging Face image classifier to verify the photo contains a cat.
+2. If not a cat → reject the upload with a clear error.
+3. Filter candidate cats by coat colour (exact match or “Other”).
+4. Call the Hugging Face image embedding model to get a 512-dim embedding.
+5. Compare against embeddings of the filtered candidates using cosine similarity (via Supabase `pgvector`).
+6. Store the top candidate matches in a moderation queue (no auto-merge yet).
+7. If no candidates meet the threshold → create a new cat record automatically.
 
-That's it. No complex scoring for MVP — just image similarity + coat colour check.
+That's it. No complex scoring for MVP — just image similarity + coat colour check, with moderator approval for merges.
 
 ### How Lost Cat Matching Works
 
@@ -185,6 +190,11 @@ When a lost cat report is submitted:
 
 If the Hugging Face API is down: save the sighting, mark embedding as `pending`, retry via a Vercel cron job (once per hour). The directory still works — the sighting just won't be merged until the retry succeeds.
 
+### Moderation + Golden Set
+
+- Any suggested match between a sighting and an existing cat must be approved by a moderator.
+- Moderator decisions are saved in a golden set table (correct vs incorrect) for later evaluation and threshold tuning.
+
 ---
 
 ## Data Model
@@ -194,8 +204,10 @@ Four tables. No users table.
 ```
 sightings
   id, photo_url, embedding (vector 512),
+  verification_label, verification_score,
+  match_status (pending/approved/rejected/auto_created),
   coat_colour, health_status, temperament, neighbourhood,
-  cat_id (nullable — set after AI merging),
+  cat_id (nullable — set after moderator approval),
   sighted_at, created_at
 
 cats
@@ -211,6 +223,12 @@ lost_cats
 pet_claims
   id, cat_id, submitter_name, contact_email, message,
   status (pending / approved / denied), created_at
+
+sighting_match_candidates
+  id, sighting_id, cat_id, similarity, status (pending/approved/rejected), reviewer_note, created_at
+
+sighting_match_golden
+  id, sighting_id, cat_id, label (correct/incorrect), reviewer_note, created_at
 ```
 
 ---

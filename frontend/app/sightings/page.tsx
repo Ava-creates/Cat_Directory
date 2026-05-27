@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import NeighbourhoodCombobox from '@/app/components/NeighbourhoodCombobox'
 import {
   API_BASE_URL,
   COAT_COLOURS,
@@ -16,6 +17,7 @@ type StatusState = {
 
 export default function SightingFormPage() {
   const [photo, setPhoto] = useState<File | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [coatColour, setCoatColour] = useState(COAT_COLOURS[0])
   const [healthStatus, setHealthStatus] = useState(HEALTH_STATUS[0])
   const [temperament, setTemperament] = useState(TEMPERAMENT[0])
@@ -28,7 +30,9 @@ export default function SightingFormPage() {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    if (!photo) {
+    const selectedFile = photo ?? fileInputRef.current?.files?.[0] ?? null
+
+    if (!selectedFile) {
       setStatus({ type: 'error', message: 'Please add a photo.' })
       return
     }
@@ -36,7 +40,7 @@ export default function SightingFormPage() {
     setStatus({ type: 'loading', message: 'Uploading sighting...' })
 
     const formData = new FormData()
-    formData.append('photo', photo)
+    formData.append('photo', selectedFile)
     formData.append('coat_colour', coatColour)
     formData.append('health_status', healthStatus)
     formData.append('temperament', temperament)
@@ -61,6 +65,9 @@ export default function SightingFormPage() {
         message: "Thanks! We'll process this shortly.",
       })
       setPhoto(null)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Something went wrong.'
@@ -81,6 +88,7 @@ export default function SightingFormPage() {
           <input
             type="file"
             accept="image/*"
+            ref={fileInputRef}
             onChange={(event) => setPhoto(event.target.files?.[0] ?? null)}
             required
           />
@@ -128,19 +136,14 @@ export default function SightingFormPage() {
           </select>
         </label>
 
-        <label className="field">
+        <div className="field">
           <span>Neighbourhood</span>
-          <select
+          <NeighbourhoodCombobox
             value={neighbourhood}
-            onChange={(event) => setNeighbourhood(event.target.value)}
-          >
-            {NEIGHBOURHOODS.map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-          </select>
-        </label>
+            onChange={setNeighbourhood}
+            placeholder="Search neighbourhoods"
+          />
+        </div>
 
         <button className="button" type="submit" disabled={status.type === 'loading'}>
           {status.type === 'loading' ? 'Submitting...' : 'Submit sighting'}

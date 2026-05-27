@@ -61,12 +61,20 @@ export default function RootLayout({
           </defs>
         </svg>
 
-        <div className="page">
+        <div className="page page--fun">
+          <div className="page-deco" aria-hidden="true">
+            <span className="page-deco__paw page-deco__paw--1" />
+            <span className="page-deco__paw page-deco__paw--2" />
+            <span className="page-deco__paw page-deco__paw--3" />
+            <span className="page-deco__paw page-deco__paw--4" />
+            <span className="page-deco__paw page-deco__paw--5" />
+          </div>
           <header className="header">
             <div className="container">
-              <a className="brand" href="/">🐾 Cat Directory</a>
+              <a className="brand" href="/">Cat Directory</a>
               <nav className="nav">
-                <a href="/">🏡 Home</a>
+                <a href="/">Home</a>
+                <a href="/cats">Cats</a>
                 <a href="/sightings">Report a Sighting</a>
                 <a href="/lost-cats">Lost Cats</a>
                 <a href="/resources">Resources</a>
@@ -74,8 +82,15 @@ export default function RootLayout({
             </div>
           </header>
           <main className="container main">{children}</main>
-          <footer className="footer">
-            <div className="container">Built for cats everywhere.</div>
+          <footer className="footer footer--fun">
+            <div className="container footer__inner">
+              <span className="footer__paws" aria-hidden="true">
+   
+              </span>
+              <span>Built for cats everywhere.</span>
+              <span className="footer__wink" aria-hidden="true">
+              </span>
+            </div>
           </footer>
         </div>
       </body>

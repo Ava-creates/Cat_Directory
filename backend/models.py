@@ -64,6 +64,17 @@ class PetClaim(PetClaimCreate):
     status: str = "pending"
     created_at: datetime
 
+# ===== Moderation Models =====
+class MatchApprove(BaseModel):
+    cat_id: str
+    mark_golden: bool = True
+    reviewer_note: Optional[str] = None
+
+class MatchReject(BaseModel):
+    cat_id: str
+    mark_golden: bool = True
+    reviewer_note: Optional[str] = None
+
 # ===== API Response Models =====
 class SuccessResponse(BaseModel):
     success: bool

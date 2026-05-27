@@ -36,6 +36,7 @@ CREATE TABLE cats (
 
 CREATE INDEX cats_neighbourhood_idx ON cats(neighbourhood);
 CREATE INDEX cats_status_idx ON cats(status);
+CREATE INDEX cats_embedding_idx ON cats USING ivfflat (embedding vector_cosine_ops);
 ```
 
 ### Sightings Table
@@ -45,6 +46,9 @@ CREATE TABLE sightings (
   photo_url TEXT NOT NULL,
   sighting_type TEXT NOT NULL DEFAULT 'normal' CHECK (sighting_type IN ('normal', 'lost_cat')),
   embedding vector(512),
+  match_status TEXT DEFAULT 'pending' CHECK (match_status IN ('pending', 'approved', 'rejected', 'auto_created')),
+  verification_label TEXT,
+  verification_score REAL,
   coat_colour TEXT NOT NULL,
   health_status TEXT NOT NULL,
   temperament TEXT NOT NULL,
@@ -66,10 +70,67 @@ If you already created the sightings table, run this update:
 ```sql
 ALTER TABLE sightings
   ADD COLUMN IF NOT EXISTS sighting_type TEXT NOT NULL DEFAULT 'normal' CHECK (sighting_type IN ('normal', 'lost_cat')),
-  ADD COLUMN IF NOT EXISTS lost_cat_id UUID REFERENCES lost_cats(id);
+  ADD COLUMN IF NOT EXISTS lost_cat_id UUID REFERENCES lost_cats(id),
+  ADD COLUMN IF NOT EXISTS match_status TEXT DEFAULT 'pending' CHECK (match_status IN ('pending', 'approved', 'rejected', 'auto_created')),
+  ADD COLUMN IF NOT EXISTS verification_label TEXT,
+  ADD COLUMN IF NOT EXISTS verification_score REAL;
 
 CREATE INDEX IF NOT EXISTS sightings_lost_cat_id_idx ON sightings(lost_cat_id);
 CREATE INDEX IF NOT EXISTS sightings_type_idx ON sightings(sighting_type);
+```
+
+### Match Candidates + Golden Set
+```sql
+CREATE TABLE sighting_match_candidates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sighting_id UUID NOT NULL REFERENCES sightings(id) ON DELETE CASCADE,
+  cat_id UUID NOT NULL REFERENCES cats(id) ON DELETE CASCADE,
+  similarity REAL NOT NULL,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  source TEXT DEFAULT 'ai',
+  reviewer_note TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX sighting_match_candidates_sighting_idx ON sighting_match_candidates(sighting_id);
+CREATE INDEX sighting_match_candidates_cat_idx ON sighting_match_candidates(cat_id);
+CREATE INDEX sighting_match_candidates_status_idx ON sighting_match_candidates(status);
+
+CREATE TABLE sighting_match_golden (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sighting_id UUID NOT NULL REFERENCES sightings(id) ON DELETE CASCADE,
+  cat_id UUID NOT NULL REFERENCES cats(id) ON DELETE CASCADE,
+  label TEXT NOT NULL CHECK (label IN ('correct', 'incorrect')),
+  reviewer_note TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX sighting_match_golden_sighting_idx ON sighting_match_golden(sighting_id);
+CREATE INDEX sighting_match_golden_cat_idx ON sighting_match_golden(cat_id);
+```
+
+### Vector Match Function
+```sql
+CREATE OR REPLACE FUNCTION match_cats(
+  query_embedding vector(512),
+  match_threshold float,
+  match_count int,
+  match_neighbourhood text DEFAULT NULL,
+  match_coat_colour text DEFAULT NULL
+)
+RETURNS TABLE (id uuid, similarity float)
+LANGUAGE sql STABLE
+AS $$
+  SELECT id,
+         1 - (embedding <=> query_embedding) AS similarity
+  FROM cats
+  WHERE embedding IS NOT NULL
+    AND (match_neighbourhood IS NULL OR neighbourhood = match_neighbourhood)
+    AND (match_coat_colour IS NULL OR coat_colour = match_coat_colour)
+    AND 1 - (embedding <=> query_embedding) >= match_threshold
+  ORDER BY embedding <=> query_embedding
+  LIMIT match_count;
+$$;
 ```
 
 ### Lost Cats Table
