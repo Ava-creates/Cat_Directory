@@ -133,7 +133,6 @@ def verify_cat_image(file_bytes: bytes) -> Tuple[bool, float, str]:
     if not isinstance(data, list):
         raise HFServiceError("Unexpected classifier response format")
 
-    print(data)
     top_label = ""
     top_score = 0.0
     cat_score = 0.0
@@ -144,7 +143,7 @@ def verify_cat_image(file_bytes: bytes) -> Tuple[bool, float, str]:
             top_score = score
             top_label = label
         if "cat" in label:
-            cat_score = max(HF_MIN_CAT_SCORE, score)
+            cat_score = max(cat_score, score)
 
     is_cat = cat_score >= HF_MIN_CAT_SCORE
     return is_cat, cat_score, top_label

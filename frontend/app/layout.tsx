@@ -1,5 +1,6 @@
 import './globals.css'
 import type { Metadata } from 'next'
+import Script from 'next/script'
 
 
 export const metadata: Metadata = {
@@ -7,6 +8,8 @@ export const metadata: Metadata = {
   description: 'Community cat sightings and lost cat listings',
   viewport: 'width=device-width, initial-scale=1.0, viewport-fit=cover',
 }
+
+const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID
 
 export default function RootLayout({
   children,
@@ -16,6 +19,20 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        {gaMeasurementId ? (
+          <>
+            <Script
+              src={`https://www.googletagmanager.com/gtag/js?id=${gaMeasurementId}`}
+              strategy="afterInteractive"
+            />
+            <Script id="google-analytics" strategy="afterInteractive">
+              {`window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', '${gaMeasurementId}');`}
+            </Script>
+          </>
+        ) : null}
         {/* SVG filter definitions — crayon hand-drawn edge distortion */}
         <svg
           style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}
