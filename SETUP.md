@@ -76,6 +76,7 @@ The repository now includes a GitHub Actions workflow that:
 ### Required App Environment Variables
 - Frontend: `NEXT_PUBLIC_API_URL`
 - Backend: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ENVIRONMENT`
+- Backend Hugging Face: `HF_TOKEN` or `HUGGING_FACE_API_KEY`
 - Backend CORS: `CORS_ORIGINS` set to your deployed frontend URL(s), separated by commas
 
 ### Flow

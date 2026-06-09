@@ -26,6 +26,15 @@ _local_model = None
 _local_processor = None
 
 
+def _get_hf_api_key() -> str:
+    api_key = HF_TOKEN or HUGGING_FACE_API_KEY
+    if not api_key:
+        raise HFServiceError(
+            "Hugging Face token is not configured. Set HF_TOKEN or HUGGING_FACE_API_KEY on Render."
+        )
+    return api_key
+
+
 def _load_local_clip():
     global _local_model, _local_processor
     if _local_model is not None and _local_processor is not None:
@@ -45,10 +54,9 @@ def _load_local_clip():
 
 
 def _get_client() -> InferenceClient:
-    api_key = HF_TOKEN or HUGGING_FACE_API_KEY
     # Use the modern Inference Providers routing (router.huggingface.co under the hood)
     # instead of the legacy api-inference.huggingface.co host (decommissioned).
-    return InferenceClient(provider="hf-inference", api_key=api_key)
+    return InferenceClient(provider="hf-inference", api_key=_get_hf_api_key())
 
 
 def _hf_headers() -> dict:
@@ -56,9 +64,7 @@ def _hf_headers() -> dict:
         "Accept": "application/json",
         "Content-Type": "application/octet-stream",
     }
-    api_key = HF_TOKEN or HUGGING_FACE_API_KEY
-    if api_key:
-        headers["Authorization"] = f"Bearer {api_key}"
+    headers["Authorization"] = f"Bearer {_get_hf_api_key()}"
     return headers
 
 
@@ -69,15 +75,20 @@ def _post_image_embedding(model: str, file_bytes: bytes) -> object:
     image_data = base64.b64encode(file_bytes).decode("utf-8")
     try:
         with httpx.Client(timeout=30.0) as client:
+            headers = _hf_headers()
             response = client.post(
                 url,
-                headers={"Authorization": _hf_headers().get("Authorization", "")},
+                headers={"Authorization": headers["Authorization"]},
                 json={"inputs": {"image": image_data}},
             )
     except httpx.HTTPError as exc:
         raise HFServiceError(f"Hugging Face request failed: {exc}")
 
     if response.status_code >= 400:
+        if response.status_code == 401:
+            raise HFServiceError(
+                "Hugging Face rejected the request with 401 Unauthorized. Check that HF_TOKEN or HUGGING_FACE_API_KEY is valid and has access to the model."
+            )
         raise HFServiceError(
             f"Hugging Face error {response.status_code}: {response.text}"
         )
