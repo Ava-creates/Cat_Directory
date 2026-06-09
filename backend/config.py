@@ -447,12 +447,10 @@ NEIGHBOURHOODS = [
 ]
 
 # AI Thresholds
-SIGHTING_MERGE_THRESHOLD = 0.75  # Cosine similarity threshold for merging sightings
-LOST_CAT_MATCH_THRESHOLD = 0.70  # Threshold for lost cat matching
+SIGHTING_MERGE_THRESHOLD = 0.90  # Cosine similarity threshold for merging sightings
+LOST_CAT_MATCH_THRESHOLD = 0.90  # Threshold for lost cat matching
 SIGHTING_MATCH_CANDIDATE_LIMIT = int(os.getenv("SIGHTING_MATCH_CANDIDATE_LIMIT", "5"))
 
-# Embedding Dimensions
-EMBEDDING_DIMENSION = 512
 
 # File Upload Limits
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
