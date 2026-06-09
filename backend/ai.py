@@ -11,8 +11,9 @@ from config import (
     HF_TOKEN,
     HUGGING_FACE_API_KEY,
     HF_CAT_CLASSIFIER_MODEL,
-    HF_IMAGE_EMBEDDING_MODEL,
     HF_MIN_CAT_SCORE,
+    JINA_API_KEY,
+    JINA_EMBEDDING_MODEL,
     USE_LOCAL_EMBEDDINGS,
     LOCAL_EMBEDDING_MODEL,
 )
@@ -33,6 +34,22 @@ def _get_hf_api_key() -> str:
             "Hugging Face token is not configured. Set HF_TOKEN or HUGGING_FACE_API_KEY on Render."
         )
     return api_key
+
+
+def _get_jina_api_key() -> str:
+    if not JINA_API_KEY:
+        raise HFServiceError(
+            "Jina API key is not configured. Set JINA_API_KEY or JINA_API_TOKEN on Render."
+        )
+    return JINA_API_KEY
+
+
+    def _get_jina_api_key() -> str:
+        if not JINA_API_KEY:
+            raise HFServiceError(
+                "Jina API key is not configured. Set JINA_API_KEY or JINA_API_TOKEN on Render."
+            )
+        return JINA_API_KEY
 
 
 def _load_local_clip():
@@ -68,29 +85,34 @@ def _hf_headers() -> dict:
     return headers
 
 
-def _post_image_embedding(model: str, file_bytes: bytes) -> object:
-    # Legacy host api-inference.huggingface.co has been decommissioned.
-    # Use the router-backed hf-inference provider endpoint instead.
-    url = f"https://router.huggingface.co/hf-inference/models/{model}"
+def _post_image_embedding(file_bytes: bytes) -> object:
+    url = "https://api.jina.ai/v1/embeddings"
     image_data = base64.b64encode(file_bytes).decode("utf-8")
     try:
         with httpx.Client(timeout=30.0) as client:
-            headers = _hf_headers()
             response = client.post(
                 url,
-                headers={"Authorization": headers["Authorization"]},
-                json={"inputs": {"image": image_data}},
+                headers={
+                    "Authorization": f"Bearer {_get_jina_api_key()}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": JINA_EMBEDDING_MODEL,
+                    "input": [
+                        {"image": image_data},
+                    ],
+                },
             )
     except httpx.HTTPError as exc:
-        raise HFServiceError(f"Hugging Face request failed: {exc}")
+        raise HFServiceError(f"Jina request failed: {exc}")
 
     if response.status_code >= 400:
         if response.status_code == 401:
             raise HFServiceError(
-                "Hugging Face rejected the request with 401 Unauthorized. Check that HF_TOKEN or HUGGING_FACE_API_KEY is valid and has access to the model."
+                "Jina rejected the request with 401 Unauthorized. Check that JINA_API_KEY or JINA_API_TOKEN is valid."
             )
         raise HFServiceError(
-            f"Hugging Face error {response.status_code}: {response.text}"
+            f"Jina error {response.status_code}: {response.text}"
         )
 
     data = response.json()
@@ -170,7 +192,12 @@ def get_image_embedding(file_bytes: bytes) -> List[float]:
     if USE_LOCAL_EMBEDDINGS:
         return _local_image_embedding(file_bytes)
 
-    data = _post_image_embedding(HF_IMAGE_EMBEDDING_MODEL, file_bytes)
+    data = _post_image_embedding(file_bytes)
+
+    if isinstance(data, dict) and isinstance(data.get("data"), list) and data["data"]:
+        first_item = data["data"][0]
+        if isinstance(first_item, dict) and isinstance(first_item.get("embedding"), list):
+            return [float(x) for x in first_item["embedding"]]
 
     if isinstance(data, list) and data and isinstance(data[0], list):
         return [float(x) for x in data[0]]

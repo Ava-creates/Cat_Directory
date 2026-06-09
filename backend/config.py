@@ -19,6 +19,7 @@ CORS_ORIGINS = [
 # External APIs
 HF_TOKEN = os.getenv("HF_TOKEN")
 HUGGING_FACE_API_KEY = os.getenv("HUGGING_FACE_API_KEY")
+JINA_API_KEY = os.getenv("JINA_API_KEY") or os.getenv("JINA_API_TOKEN")
 RESEND_API_KEY = os.getenv("RESEND_API_KEY")
 
 # Local Embeddings
@@ -29,8 +30,10 @@ LOCAL_EMBEDDING_MODEL = os.getenv("LOCAL_EMBEDDING_MODEL", "wkcn/TinyCLIP-ViT-8M
 # Hugging Face Models
 # Used for cat verification (see ai.verify_cat_image).
 HF_CAT_CLASSIFIER_MODEL = os.getenv("HF_CAT_CLASSIFIER_MODEL", "google/vit-base-patch16-224")
-HF_IMAGE_EMBEDDING_MODEL = os.getenv("HF_IMAGE_EMBEDDING_MODEL", "openai/clip-vit-base-patch32")
 HF_MIN_CAT_SCORE = float(os.getenv("HF_MIN_CAT_SCORE", "0.60"))
+
+# Jina AI Embeddings
+JINA_EMBEDDING_MODEL = os.getenv("JINA_EMBEDDING_MODEL", "jina-clip-v2")
 
 # Neighbourhoods (hardcoded for MVP)
 NEIGHBOURHOODS = [
