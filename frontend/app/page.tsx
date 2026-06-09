@@ -108,8 +108,7 @@ export default async function HomePage() {
           &ldquo;
         </p>
         <p className="quote-text">
-          A cat is only invisible until someone in the neighbourhood writes
-          them into the story.
+          A cat is the boss.
         </p>
         <p className="quote-attribution">— probably a very wise tabby</p>
       </section>
