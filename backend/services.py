@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Union
 from datetime import datetime
 
 from fastapi import HTTPException
@@ -72,8 +72,22 @@ def create_cat_from_sighting(
     health_status: str,
     temperament: str,
     neighbourhood: str,
-    sighted_at: datetime,
+    sighted_at: Union[datetime, str],
 ) -> str:
+    # accept either a datetime or an ISO string; parse strings robustly
+    if isinstance(sighted_at, str):
+        try:
+            dt = datetime.fromisoformat(sighted_at)
+        except Exception:
+            try:
+                from dateutil.parser import parse as _parse
+
+                dt = _parse(sighted_at)
+            except Exception:
+                raise HTTPException(status_code=400, detail="Invalid sighted_at datetime")
+    else:
+        dt = sighted_at
+
     payload = {
         "primary_photo_url": photo_url,
         "embedding": embedding,
@@ -81,7 +95,7 @@ def create_cat_from_sighting(
         "health_status": health_status,
         "temperament": temperament,
         "neighbourhood": neighbourhood,
-        "last_seen_at": sighted_at.isoformat(),
+        "last_seen_at": dt.isoformat(),
     }
     response = client.table("cats").insert(payload).execute()
     if not response.data:
