@@ -425,6 +425,23 @@ def approve_sighting_match(
             }
         ).execute()
 
+    # Update matched cat's sighting_count and last_seen_at (do not block approval)
+    try:
+        sighting_resp = client.table("sightings").select("sighted_at").eq("id", sighting_id).limit(1).execute()
+        sighting_row = (sighting_resp.data or [None])[0]
+        if sighting_row:
+            sighted_at_val = sighting_row.get("sighted_at")
+            cat_resp = client.table("cats").select("sighting_count").eq("id", payload.cat_id).limit(1).execute()
+            cat_row = (cat_resp.data or [None])[0]
+            current_count = (cat_row.get("sighting_count") if cat_row and cat_row.get("sighting_count") is not None else 0)
+            client.table("cats").update({
+                "sighting_count": current_count + 1,
+                "last_seen_at": sighted_at_val,
+            }).eq("id", payload.cat_id).execute()
+    except Exception:
+        # don't block approval on update failure
+        pass
+
     return {"success": True}
 
 
