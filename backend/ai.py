@@ -156,23 +156,22 @@ def verify_cat_image(file_bytes: bytes) -> Tuple[bool, float, str]:
             _cleanup_temp_path(temp_path)
     if not isinstance(data, list):
         raise HFServiceError("Unexpected classifier response format")
-
     top_label = ""
     top_score = 0.0
     cat_score = 0.0
     print(data)
-    for item in data:
-        label = str(item.get("label", "")).lower()
-        score = float(item.get("score", 0.0))
-        if score > top_score:
-            top_score = score
-            top_label = label
-        if "cat" in label:
-            cat_score = max(cat_score, score)
+    # for item in data:
+    #     label = str(item.get("label", "")).lower()
+    #     score = float(item.get("score", 0.0))
+    #     if score > top_score:
+    #         top_score = score
+    #         top_label = label
+    #     if "cat" in label:
+    #         cat_score = max(cat_score, score)
 
-    # Be strict: require the top prediction itself to be a cat label.
-    # This reduces false positives (e.g. faces sometimes get weak "cat" labels).
-    is_cat = ("cat" in top_label) and (top_score >= HF_MIN_CAT_SCORE)
+    # Decide `is_cat` purely from returned labels: any label containing 'cat' (case-insensitive).
+    # Ignore the classifier score threshold here per request.
+    is_cat = any("cat" in str(item.get("label", "")).lower() for item in data)
     return is_cat, cat_score, top_label
 
 
