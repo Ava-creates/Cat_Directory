@@ -44,13 +44,6 @@ def _get_jina_api_key() -> str:
     return JINA_API_KEY
 
 
-    def _get_jina_api_key() -> str:
-        if not JINA_API_KEY:
-            raise HFServiceError(
-                "Jina API key is not configured. Set JINA_API_KEY or JINA_API_TOKEN on Render."
-            )
-        return JINA_API_KEY
-
 
 def _load_local_clip():
     global _local_model, _local_processor
@@ -76,13 +69,7 @@ def _get_client() -> InferenceClient:
     return InferenceClient(provider="hf-inference", api_key=_get_hf_api_key())
 
 
-def _hf_headers() -> dict:
-    headers = {
-        "Accept": "application/json",
-        "Content-Type": "application/octet-stream",
-    }
-    headers["Authorization"] = f"Bearer {_get_hf_api_key()}"
-    return headers
+
 
 
 def _post_image_embedding(file_bytes: bytes) -> object:
@@ -173,6 +160,7 @@ def verify_cat_image(file_bytes: bytes) -> Tuple[bool, float, str]:
     top_label = ""
     top_score = 0.0
     cat_score = 0.0
+    print(data)
     for item in data:
         label = str(item.get("label", "")).lower()
         score = float(item.get("score", 0.0))
