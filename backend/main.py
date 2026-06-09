@@ -67,6 +67,7 @@ from services import (
     store_match_candidates,
     create_cat_from_sighting,
     fetch_sighting_for_creation,
+    compress_image_bytes,
 )
 
 # ===== Health Check =====
@@ -103,7 +104,13 @@ def create_sighting(
 
         file_bytes = photo.file.read()
         if len(file_bytes) > MAX_FILE_SIZE:
-            raise HTTPException(status_code=400, detail="File too large")
+            try:
+                file_bytes = compress_image_bytes(file_bytes, MAX_FILE_SIZE)
+                file_ext = "jpg"
+            except HTTPException:
+                raise
+            except Exception:
+                raise HTTPException(status_code=400, detail="File too large")
 
         try:
             is_cat, score, label = verify_cat_image(file_bytes)
@@ -128,7 +135,7 @@ def create_sighting(
             client.storage.from_("sightings").upload(
                 path=object_name,
                 file=file_bytes,
-                file_options={"content-type": photo.content_type or "application/octet-stream"},
+                file_options={"content-type": "image/jpeg" if file_ext == "jpg" else photo.content_type or "application/octet-stream"},
             )
         except Exception as exc:
             raise HTTPException(status_code=500, detail=f"Failed to upload photo: {exc}")
@@ -279,7 +286,11 @@ def create_lost_cat(
 
         file_bytes = photo.file.read()
         if len(file_bytes) > MAX_FILE_SIZE:
-            raise HTTPException(status_code=400, detail="File too large")
+            try:
+                file_bytes = compress_image_bytes(file_bytes, MAX_FILE_SIZE)
+                file_ext = "jpg"
+            except Exception:
+                raise HTTPException(status_code=400, detail="File too large")
 
         object_name = f"{uuid.uuid4()}.{file_ext}"
         try:

@@ -3,6 +3,8 @@ from datetime import datetime
 
 from fastapi import HTTPException
 from supabase import create_client, Client
+from io import BytesIO
+from PIL import Image
 
 from config import (
     SUPABASE_URL,
@@ -121,3 +123,41 @@ def fetch_sighting_for_creation(sighting_id: str) -> dict:
     if not sighting.get("embedding"):
         raise HTTPException(status_code=400, detail="Sighting is missing an embedding")
     return sighting
+
+
+def compress_image_bytes(img_bytes: bytes, max_size_bytes: int, max_dim: int = 1600, start_quality: int = 85) -> bytes:
+    """Resize and compress image bytes to be under `max_size_bytes`.
+
+    - Converts images to RGB JPEG.
+    - Resizes the largest dimension to `max_dim` if larger.
+    - Iteratively reduces JPEG quality until size is under the limit or quality reaches 20.
+    """
+    try:
+        img = Image.open(BytesIO(img_bytes))
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid image data")
+
+    if img.mode in ("RGBA", "LA"):
+        bg = Image.new("RGB", img.size, (255, 255, 255))
+        bg.paste(img, mask=img.split()[-1])
+        img = bg
+    else:
+        img = img.convert("RGB")
+
+    w, h = img.size
+    if max(w, h) > max_dim:
+        scale = max_dim / float(max(w, h))
+        img = img.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
+
+    out = BytesIO()
+    quality = start_quality
+    img.save(out, format="JPEG", quality=quality, optimize=True)
+    data = out.getvalue()
+
+    while len(data) > max_size_bytes and quality > 20:
+        quality -= 5
+        out = BytesIO()
+        img.save(out, format="JPEG", quality=quality, optimize=True)
+        data = out.getvalue()
+
+    return data
